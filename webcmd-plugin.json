@@ -1,0 +1,10 @@
+{
+  "name": "notion",
+  "version": "0.1.0",
+  "description": "Notion commands for Webcmd",
+  "webcmd": ">=0.5.2",
+  "author": {
+    "name": "ArcManagement",
+    "handle": "arcmanagement"
+  }
+}
