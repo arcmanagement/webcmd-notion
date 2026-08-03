@@ -2219,6 +2219,12 @@ cli({
     const limit = limitFrom(kwargs.limit, 50);
     await navigateNotion(page, NOTION_HOME);
 
+    // NOTION_HOME は直前に開いていたページへリダイレクトするまで数秒かかる。
+    // サイドバーの検索ボタンが現れるまで待たないと trigger 探索が空振りする
+    await page
+      .wait({ selector: '[aria-label*="検索"], [aria-label*="Search" i]', timeout: 20 })
+      .catch(() => {});
+
     const prepared = unwrapEvaluateResult(await page.evaluate(`(() => {
       const nodes = Array.from(document.querySelectorAll('button, [role="button"]'));
       const trigger = nodes.find((node) => /^(search|検索)|search|検索/i.test(
@@ -2233,14 +2239,17 @@ cli({
     } else {
       await page.pressKey(process.platform === 'darwin' ? 'Meta+P' : 'Control+P');
     }
+    // Notion は検索パネルを [role="dialog"] でラップしない場合がある。dialog 内と直下の両方を待つ
     await page.wait({
-      selector: '[role="dialog"] input[role="combobox"], [role="dialog"] input[type="search"]',
+      selector:
+        '[role="dialog"] input[role="combobox"], [role="dialog"] input[type="search"], input[role="combobox"], input[type="search"], input[placeholder*="Search" i], input[placeholder*="検索"]',
       timeout: 10,
     });
 
     const inputReady = unwrapEvaluateResult(await page.evaluate(`(() => {
-      const dialog = document.querySelector('[role="dialog"]') || document;
-      const input = dialog.querySelector('input[role="combobox"], input[type="search"], input[placeholder*="Search" i], input[placeholder*="検索"]');
+      const SELECTOR = 'input[role="combobox"], input[type="search"], input[placeholder*="Search" i], input[placeholder*="検索"]';
+      const dialog = document.querySelector('[role="dialog"]');
+      const input = (dialog && dialog.querySelector(SELECTOR)) || document.querySelector(SELECTOR);
       if (!input) return false;
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
       if (setter) setter.call(input, ${JSON.stringify(query)});

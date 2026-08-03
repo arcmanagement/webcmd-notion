@@ -52,8 +52,39 @@ test('extracts sidebar, favorites, and search rows', () => {
     { index: 0, title: '⭐ Favorite Page', url: 'https://www.notion.so/Favorite-111' },
   ]);
   assert.deepEqual(parser.search(), [
-    { index: 0, title: 'Search Result', url: 'https://www.notion.so/Search-Result-444', kind: 'page' },
+    {
+      index: 0,
+      title: 'Search Result',
+      context: '',
+      url: 'https://www.notion.so/Search-Result-444',
+      kind: 'page',
+    },
   ]);
+});
+
+test('search splits the title from breadcrumb and snippet', () => {
+  // 実際の検索結果と同じく、タイトル / パンくず / 更新日 / 抜粋 が別要素に分かれる
+  const html = `<!doctype html><html><body>
+    <div role="listbox">
+      <a href="/Team-Delete-555">
+        <div role="option">
+          <div><div>チーム削除手順 DB直接実行</div></div>
+          <div>
+            <div>ManualForce 開発ポータル</div><span>/</span><div>ドキュメント一覧</div>
+            <span>•</span><span>編集日時：7月7日</span>
+          </div>
+          <div>顧客からチーム削除依頼を受けたときの手順。</div>
+        </div>
+      </a>
+    </div>
+  </body></html>`;
+  const dom = domFor(html, 'https://www.notion.so/Project-Alpha-222');
+  const rows = createNotionParser(dom.window.document, dom.window.location).search();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].title, 'チーム削除手順 DB直接実行');
+  assert.equal(rows[0].url, 'https://www.notion.so/Team-Delete-555');
+  assert.match(rows[0].context, /ドキュメント一覧/);
+  assert.doesNotMatch(rows[0].title, /ドキュメント一覧/);
 });
 
 test('extracts workspace names, access, and current selection', () => {
